@@ -27,17 +27,19 @@ function getMessages(): Record<string, Record<string, string>> {
 function readInitialLocale(): Locale {
   try {
     const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored === "en" || stored === "zh-CN") return stored;
+    if (stored === "en") return "en";
+    if (stored === "zh-TW") return "zh-TW";
+    if (stored === "zh-CN") return "zh-TW";
   } catch {
-    // 隐私模式或存储不可用时继续使用浏览器语言。
+    // 在隱私模式或儲存不可用時，繼續使用瀏覽器語言。
   }
   return resolveBrowserLocale(window.navigator.languages.length ? window.navigator.languages : [window.navigator.language]);
 }
 
 /**
- * 提供 Pi Web 的界面语言状态和翻译能力。
- * @param props React 子节点
- * @returns 包含语言上下文的 React 节点
+ * 提供 Pi Web 的介面語言狀態和翻譯能力。
+ * @param props React 子節點
+ * @returns 包含語言上下文的 React 節點
  */
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
@@ -62,7 +64,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
     } catch {
-      // 存储失败不影响当前页面内的语言切换。
+      // 儲存失敗不影響當前頁面內的語言切換。
     }
   }, []);
 
@@ -73,9 +75,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 获取当前组件树中的国际化能力。
- * @returns 当前 locale、翻译函数、语言切换函数和支持的语言列表
- * @throws 当组件不在 I18nProvider 内时抛出异常
+ * 獲取當前元件樹中的國際化能力。
+ * @returns 當前 locale、翻譯函式、語言切換函式和支援的語言列表
+ * @throws 當元件不在 I18nProvider 內時拋出異常
  */
 export function useI18n(): I18nContextValue {
   const context = useContext(I18nContext);

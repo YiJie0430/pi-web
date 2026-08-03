@@ -602,7 +602,7 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
   const activeCwdName = activeCwd ? getFileName(activeCwd) || activeCwd : null;
-  const windowTitle = activeCwdName ? `${activeCwdName} - Pi Web` : "Pi Web";
+  const windowTitle = activeCwdName ? `${activeCwdName} - HT WIKI` : "HT WIKI";
 
   useEffect(() => {
     const syncWindowTitle = () => {
@@ -772,7 +772,7 @@ export function AppShell() {
         }
       }
     `}</style>
-    <div style={{
+    <div suppressHydrationWarning style={{
       display: "flex",
       width: "100%",
       height: "var(--app-viewport-height, 100dvh)",
