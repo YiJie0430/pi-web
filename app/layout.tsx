@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Mono } from "next/font/google";
 import { PwaRegistration } from "@/components/PwaRegistration";
+import { APP_NAME } from "@/lib/branding";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -11,9 +12,9 @@ const notoSansMono = Noto_Sans_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HT WIKI",
-  description: "HT WIKI interface for the pi coding agent",
-  applicationName: "HT WIKI",
+  title: APP_NAME,
+  description: `${APP_NAME} interface for the pi coding agent`,
+  applicationName: APP_NAME,
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

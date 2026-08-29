@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
+import { APP_NAME } from "@/lib/branding";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "HT WIKI",
-    short_name: "HT WIKI",
+    name: APP_NAME,
+    short_name: APP_NAME,
     description: "Local web interface for the pi coding agent",
     start_url: "/",
     scope: "/",

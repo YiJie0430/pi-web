@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties, type ReactNode } from "react";
 import type { SessionInfo } from "@/lib/types";
+import { APP_NAME } from "@/lib/branding";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
@@ -307,7 +308,7 @@ function PiWebTitle() {
         minWidth: "6ch",
       }}
     >
-      HT WIKI
+      {APP_NAME}
     </div>
   );
 }
