@@ -13,8 +13,10 @@ import {
   IMAGE_PREVIEW_MAX_BYTES,
   TEXT_PREVIEW_MAX_BYTES,
   documentPreviewKind,
+  formatBytes,
   getAudioMime,
   getDocumentMime,
+  getEnvLimit,
   getFileExt,
   getImageMime,
 } from "@/lib/file-types";
@@ -39,10 +41,10 @@ const IGNORED_SUFFIXES = [".pyc"];
 const FILE_REQUEST_TYPES = ["list", "read", "download", "meta", "preview", "watch"] as const;
 type FileRequestType = typeof FILE_REQUEST_TYPES[number];
 const FILE_REQUEST_TYPE_SET = new Set<string>(FILE_REQUEST_TYPES);
-const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024;
-const MAX_UPLOAD_TOTAL_BYTES = 100 * 1024 * 1024;
+const MAX_UPLOAD_FILE_BYTES = getEnvLimit("PI_WEB_MAX_UPLOAD_FILE_BYTES", 500 * 1024 * 1024);
+const MAX_UPLOAD_TOTAL_BYTES = getEnvLimit("PI_WEB_MAX_UPLOAD_TOTAL_BYTES", 1024 * 1024 * 1024);
 // Multipart boundaries and headers are not file bytes, but must be bounded too.
-const MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_TOTAL_BYTES + 1024 * 1024;
+const MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_TOTAL_BYTES + 10 * 1024 * 1024;
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
   ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
@@ -164,16 +166,16 @@ export async function POST(
       formData = await parseFormDataWithinLimit(request, MAX_UPLOAD_REQUEST_BYTES);
     } catch (error) {
       if (error instanceof RequestBodyTooLargeError) {
-        return NextResponse.json({ error: "Uploads must total 100MB or less" }, { status: 413 });
+        return NextResponse.json({ error: `Uploads must total ${formatBytes(MAX_UPLOAD_TOTAL_BYTES)} or less` }, { status: 413 });
       }
       throw error;
     }
     const files = formData.getAll("files").filter((entry): entry is File => typeof entry !== "string");
     if (files.some((file) => file.size > MAX_UPLOAD_FILE_BYTES)) {
-      return NextResponse.json({ error: "Each upload must be 25MB or smaller" }, { status: 413 });
+      return NextResponse.json({ error: `Each upload must be ${formatBytes(MAX_UPLOAD_FILE_BYTES)} or smaller` }, { status: 413 });
     }
     if (files.reduce((total, file) => total + file.size, 0) > MAX_UPLOAD_TOTAL_BYTES) {
-      return NextResponse.json({ error: "Uploads must total 100MB or less" }, { status: 413 });
+      return NextResponse.json({ error: `Uploads must total ${formatBytes(MAX_UPLOAD_TOTAL_BYTES)} or less` }, { status: 413 });
     }
     const fileNames = files.map((file) => file.name);
     const validationError = validateUploadFileNames(fileNames);
@@ -453,7 +455,7 @@ export async function GET(
       const imageMime = getImageMime(filePath);
       if (imageMime) {
         if (stat.size > IMAGE_PREVIEW_MAX_BYTES) {
-          return NextResponse.json({ error: "Image too large (>10MB)" }, { status: 413 });
+          return NextResponse.json({ error: `Image too large (>${formatBytes(IMAGE_PREVIEW_MAX_BYTES)})` }, { status: 413 });
         }
         return streamFile(filePath, stat, imageMime, request.headers.get("range"));
       }
@@ -466,7 +468,7 @@ export async function GET(
         return streamFile(filePath, stat, documentMime, request.headers.get("range"));
       }
       if (stat.size > TEXT_PREVIEW_MAX_BYTES) {
-        return NextResponse.json({ error: "File too large for preview (>256KB)" }, { status: 413 });
+        return NextResponse.json({ error: `File too large for preview (>${formatBytes(TEXT_PREVIEW_MAX_BYTES)})` }, { status: 413 });
       }
       const content = fs.readFileSync(filePath, "utf-8");
       const language = getLanguage(filePath);
@@ -504,7 +506,7 @@ export async function GET(
         return NextResponse.json({ error: "Preview not available for this file type" }, { status: 400 });
       }
       if (stat.size > DOCX_PREVIEW_MAX_BYTES) {
-        return NextResponse.json({ error: "DOCX too large for preview (>10MB)" }, { status: 413 });
+        return NextResponse.json({ error: `DOCX too large for preview (>${formatBytes(DOCX_PREVIEW_MAX_BYTES)})` }, { status: 413 });
       }
 
       const mammoth = await import("mammoth");

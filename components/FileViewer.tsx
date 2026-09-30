@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import { useTheme } from "@/hooks/useTheme";
 import {
   DOCX_PREVIEW_MAX_BYTES,
+  formatBytes,
   getFileExt,
   isAudioPath,
   isDocumentPreviewPath,
@@ -20,6 +21,7 @@ import {
 import { encodeFilePathForApi, getFileDirectory, getFileName, getRelativeFilePath } from "@/lib/file-paths";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import { markdownPreviewRehypePlugins, markdownPreviewRemarkPlugins, normalizeDisplayMath } from "@/lib/markdown";
+import { getInitialDisplayMode, shouldUsePlainSourceRenderer } from "@/lib/file-viewer-display";
 import { CodeBlock, MermaidBlock } from "./MermaidBlock";
 import { parseUnifiedPatch } from "@/lib/patch";
 import type { GitFileDiffResponse } from "@/lib/git-types";
@@ -190,6 +192,47 @@ function SourceCodeRenderer({ rows, stylesheet, useInlineStyles, wrapLines }: So
       </span>
     );
   });
+}
+
+function PlainSourceRenderer({ lines, wrapLines }: { lines: string[]; wrapLines: boolean }) {
+  return (
+    <div
+      className={wrapLines ? "file-source-view is-wrapped" : "file-source-view"}
+      style={{
+        margin: 0,
+        padding: 0,
+        border: 0,
+        background: "var(--bg)",
+        ...FILE_CODE_STYLE,
+        width: wrapLines ? "100%" : "max-content",
+        minWidth: "100%",
+        minHeight: "100%",
+        overflow: "visible",
+      }}
+    >
+      {lines.map((line, lineIndex) => (
+        <span
+          className="file-source-line"
+          data-line-number={lineIndex + 1}
+          key={`plain-source-line-${lineIndex}`}
+          style={{ display: "flex", minWidth: "100%" }}
+        >
+          <span style={FILE_LINE_NUMBER_STYLE}>{lineIndex + 1}</span>
+          <span
+            className="file-source-line-content"
+            style={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              overflowWrap: wrapLines ? "anywhere" : "normal",
+              whiteSpace: wrapLines ? "pre-wrap" : "pre",
+            }}
+          >
+            {line || "\u00A0"}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function getFileApiUrl(
@@ -693,7 +736,7 @@ function DocumentViewer({ filePath, cwd, sourceSessionId }: Props) {
         if (typeof d.size === "number") {
           setSize(d.size);
           if (!isPdf && d.size > DOCX_PREVIEW_MAX_BYTES) {
-            setError("DOCX too large for preview (>10MB)");
+            setError(`DOCX too large for preview (>${formatBytes(DOCX_PREVIEW_MAX_BYTES)})`);
           }
         }
       })
@@ -709,7 +752,7 @@ function DocumentViewer({ filePath, cwd, sourceSessionId }: Props) {
         if (typeof d.size === "number") {
           setSize(d.size);
           if (!isPdf && d.size > DOCX_PREVIEW_MAX_BYTES) {
-            setError("DOCX too large for preview (>10MB)");
+            setError(`DOCX too large for preview (>${formatBytes(DOCX_PREVIEW_MAX_BYTES)})`);
             return;
           }
         }
@@ -812,7 +855,7 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [selectedLineRange, setSelectedLineRange] = useState<SelectedLineRange | null>(null);
 
-  const fetchContent = useCallback((filePath: string) => {
+  const fetchContent = useCallback((filePath: string, resetDisplayMode = false) => {
     return fetch(getFileApiUrl(filePath, "read", sourceSessionId))
       .then((r) => r.json())
       .then((d: FileData & { error?: string }) => {
@@ -821,6 +864,9 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
           return null;
         }
         setError(null);
+        if (resetDisplayMode) {
+          setDisplayMode(getInitialDisplayMode(d.language, initialDisplayMode));
+        }
         setData(d);
         return d;
       })
@@ -828,7 +874,7 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
         setError(String(e));
         return null;
       });
-  }, [sourceSessionId]);
+  }, [initialDisplayMode, sourceSessionId]);
 
   const fetchGitDiff = useCallback(async (targetPath: string) => {
     const requestId = ++gitDiffRequestRef.current;
@@ -867,7 +913,7 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
       esRef.current = null;
     }
 
-    fetchContent(filePath).finally(() => setLoading(false));
+    fetchContent(filePath, true).finally(() => setLoading(false));
 
     // Set up SSE watch
     const es = new EventSource(getFileApiUrl(filePath, "watch", sourceSessionId));
@@ -899,12 +945,6 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
   useEffect(() => {
     void fetchGitDiff(filePath);
   }, [fetchGitDiff, filePath, gitRefreshKey]);
-
-  useEffect(() => {
-    if (data?.language === "markdown" && initialDisplayMode !== "diff") {
-      setDisplayMode("preview");
-    }
-  }, [data?.language, initialDisplayMode]);
 
   const hasGitDiff = gitDiff?.supported === true && typeof gitDiff.patch === "string";
   const isDeletedDiff = hasGitDiff && gitDiff.status === "deleted";
@@ -1023,9 +1063,10 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
         ...(hasPreview ? ["preview" as const] : []),
         ...(hasGitDiff ? ["diff" as const] : []),
       ];
+  const usePlainSourceRenderer = !!data && shouldUsePlainSourceRenderer({ size: data.size, lineCount: lines.length });
   const metadata = isDeletedDiff
     ? t("files.deleted")
-    : `${language} · ${lines.length} lines · ${formatSize(data!.size)}`;
+    : `${language} · ${lines.length} lines · ${formatSize(data!.size)}${usePlainSourceRenderer ? " · fast source" : ""}`;
 
   return (
     <div className="file-viewer-shell" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -1202,6 +1243,8 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
               {markdownPreview}
             </ReactMarkdown>
           </div>
+        ) : usePlainSourceRenderer ? (
+          <PlainSourceRenderer lines={lines} wrapLines={wrapLines} />
         ) : (
           <SyntaxHighlighter
             className={wrapLines ? "file-source-view is-wrapped" : "file-source-view"}

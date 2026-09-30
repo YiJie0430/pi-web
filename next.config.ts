@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     "@earendil-works/pi-tui",
   ],
   //allowedDevOrigins: ['192.168.*.*'],
-  allowedDevOrigins: ['192.168.*.*','100.68.23.69'],
+  allowedDevOrigins: ['192.168.*.*','100.109.93.64'],
   async headers() {
     return [
       {
@@ -45,6 +45,11 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
     NEXT_PUBLIC_PI_VERSION: piVersion,
+    NEXT_PUBLIC_PI_WEB_TEXT_PREVIEW_MAX_BYTES: process.env.PI_WEB_TEXT_PREVIEW_MAX_BYTES || "",
+    NEXT_PUBLIC_PI_WEB_IMAGE_PREVIEW_MAX_BYTES: process.env.PI_WEB_IMAGE_PREVIEW_MAX_BYTES || "",
+    NEXT_PUBLIC_PI_WEB_DOCX_PREVIEW_MAX_BYTES: process.env.PI_WEB_DOCX_PREVIEW_MAX_BYTES || "",
+    NEXT_PUBLIC_PI_WEB_MAX_UPLOAD_FILE_BYTES: process.env.PI_WEB_MAX_UPLOAD_FILE_BYTES || "",
+    NEXT_PUBLIC_PI_WEB_MAX_UPLOAD_TOTAL_BYTES: process.env.PI_WEB_MAX_UPLOAD_TOTAL_BYTES || "",
   },
 };
 

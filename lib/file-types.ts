@@ -1,6 +1,31 @@
-export const TEXT_PREVIEW_MAX_BYTES = 256 * 1024;
-export const IMAGE_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
-export const DOCX_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
+export function getEnvLimit(envName: string, defaultValue: number): number {
+  const value = typeof process !== "undefined" ? (process.env[envName] || process.env[`NEXT_PUBLIC_${envName}`]) : undefined;
+  if (value) {
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return defaultValue;
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) {
+    const kb = bytes / 1024;
+    return `${Number.isInteger(kb) ? kb : kb.toFixed(1)}KB`;
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    const mb = bytes / (1024 * 1024);
+    return `${Number.isInteger(mb) ? mb : mb.toFixed(1)}MB`;
+  }
+  const gb = bytes / (1024 * 1024 * 1024);
+  return `${Number.isInteger(gb) ? gb : gb.toFixed(1)}GB`;
+}
+
+export const TEXT_PREVIEW_MAX_BYTES = getEnvLimit("PI_WEB_TEXT_PREVIEW_MAX_BYTES", 10 * 1024 * 1024);
+export const IMAGE_PREVIEW_MAX_BYTES = getEnvLimit("PI_WEB_IMAGE_PREVIEW_MAX_BYTES", 100 * 1024 * 1024);
+export const DOCX_PREVIEW_MAX_BYTES = getEnvLimit("PI_WEB_DOCX_PREVIEW_MAX_BYTES", 100 * 1024 * 1024);
 
 export type DocumentPreviewKind = "pdf" | "docx";
 
